@@ -1,0 +1,61 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/2024-11-05/tool-list",
+  "_comment": "Tool schemas exposed by the PaladinFi Swap MCP server at https://swap.paladinfi.com/mcp. This file is informational; the live server is the source of truth.",
+  "server": {
+    "name": "Paladin Swap Router",
+    "transport": "streamable-http",
+    "url": "https://swap.paladinfi.com/mcp"
+  },
+  "tools": [
+    {
+      "name": "swap_quote",
+      "description": "Get a best-execution swap quote on Base (chainId 8453). Returns ready-to-execute calldata with a 10 bps fee already injected. Your wallet signs and submits the transaction; PaladinFi never holds funds.",
+      "inputSchema": {
+        "type": "object",
+        "required": ["sellToken", "buyToken", "sellAmount", "taker"],
+        "properties": {
+          "sellToken": {
+            "type": "string",
+            "description": "ERC-20 contract address of the token being sold (0x-prefixed).",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "buyToken": {
+            "type": "string",
+            "description": "ERC-20 contract address of the token being bought (0x-prefixed).",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "sellAmount": {
+            "type": "string",
+            "description": "Amount of sellToken in wei (integer string).",
+            "pattern": "^[0-9]+$"
+          },
+          "taker": {
+            "type": "string",
+            "description": "Address that will sign and submit the transaction.",
+            "pattern": "^0x[a-fA-F0-9]{40}$"
+          },
+          "chainId": {
+            "type": "integer",
+            "description": "EVM chain ID. Defaults to 8453 (Base).",
+            "default": 8453
+          },
+          "slippageBps": {
+            "type": "integer",
+            "description": "Max slippage in basis points. Defaults to 50 (0.5%).",
+            "minimum": 0,
+            "maximum": 5000,
+            "default": 50
+          }
+        }
+      }
+    },
+    {
+      "name": "swap_health",
+      "description": "Get current service health, fee configuration, and supported chains. Returns the same payload as the GET /health endpoint.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {}
+      }
+    }
+  ]
+}

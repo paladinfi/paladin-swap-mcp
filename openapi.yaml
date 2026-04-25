@@ -1,0 +1,184 @@
+openapi: 3.0.3
+info:
+  title: PaladinFi Swap API
+  description: |
+    Multi-aggregator swap router for AI agents on Base. Returns ready-to-execute
+    calldata with a deterministic 10 bps fee already injected.
+
+    Operated by Malcontent Games LLC, doing business as PaladinFi.
+  version: "0.1.0"
+  contact:
+    name: PaladinFi
+    email: dev@paladinfi.com
+    url: https://paladinfi.com
+  license:
+    name: Proprietary (hosted backend)
+    url: https://paladinfi.com/terms/
+servers:
+  - url: https://swap.paladinfi.com
+    description: Production
+paths:
+  /health:
+    get:
+      summary: Liveness and fee config
+      description: Returns service status, fee configuration, and supported chains.
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+              example:
+                status: "ok"
+                feeRecipient: "0xeA8C33d018760D034384e92D1B2a7cf0338834b4"
+                feeBps: 10
+                supportedChains: [8453]
+                version: "0.1.0"
+  /v1/quote:
+    post:
+      summary: Best-execution swap quote with calldata
+      description: |
+        Returns the best-execution route across upstream aggregators (0x today;
+        1inch and Odos coming) for a token pair on Base, including
+        ready-to-execute transaction calldata. The router address and calldata
+        are submitted by the caller's wallet — PaladinFi does not sign or hold
+        funds.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteRequest"
+            example:
+              chainId: 8453
+              sellToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+              buyToken: "0x4200000000000000000000000000000000000006"
+              sellAmount: "5000000"
+              taker: "0xYOUR_AGENT_WALLET"
+              slippageBps: 50
+      responses:
+        "200":
+          description: Best-execution quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+        "400":
+          description: Invalid request (malformed input, unsupported pair, etc.)
+        "429":
+          description: Rate limit exceeded
+        "503":
+          description: Upstream aggregator unavailable
+components:
+  schemas:
+    Health:
+      type: object
+      required: [status, feeRecipient, feeBps, supportedChains, version]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+        feeRecipient:
+          type: string
+          description: 0x-prefixed Ethereum address that receives the affiliate fee.
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        feeBps:
+          type: integer
+          description: Affiliate fee, in basis points, taken on the buy token.
+          example: 10
+        supportedChains:
+          type: array
+          items:
+            type: integer
+          example: [8453]
+        version:
+          type: string
+    QuoteRequest:
+      type: object
+      required: [chainId, sellToken, buyToken, sellAmount, taker]
+      properties:
+        chainId:
+          type: integer
+          description: EVM chain ID. Currently 8453 (Base) is supported.
+          example: 8453
+        sellToken:
+          type: string
+          description: 0x-prefixed ERC-20 contract address of the token being sold.
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        buyToken:
+          type: string
+          description: 0x-prefixed ERC-20 contract address of the token being bought.
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        sellAmount:
+          type: string
+          description: Amount of sellToken in wei (integer string).
+          pattern: "^[0-9]+$"
+        taker:
+          type: string
+          description: 0x-prefixed Ethereum address that will sign and submit the transaction.
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        slippageBps:
+          type: integer
+          description: Maximum acceptable slippage, in basis points. Default 50 (0.5%).
+          minimum: 0
+          maximum: 5000
+          example: 50
+    QuoteResponse:
+      type: object
+      required:
+        [
+          source,
+          chainId,
+          router,
+          calldata,
+          buyAmount,
+          minBuyAmount,
+          sellAmount,
+          gas,
+          ourFeeBps,
+          ourFeeRecipient,
+        ]
+      properties:
+        source:
+          type: string
+          description: Upstream aggregator that produced the route.
+          example: "0x"
+        chainId:
+          type: integer
+          example: 8453
+        router:
+          type: string
+          description: Contract address to send the transaction to.
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        calldata:
+          type: string
+          description: Hex-encoded transaction calldata. Submit unchanged.
+          pattern: "^0x[a-fA-F0-9]+$"
+        buyAmount:
+          type: string
+          description: Quoted buy amount in wei (estimated, before slippage).
+          pattern: "^[0-9]+$"
+        minBuyAmount:
+          type: string
+          description: Minimum buy amount after slippage tolerance — enforced on-chain.
+          pattern: "^[0-9]+$"
+        sellAmount:
+          type: string
+          pattern: "^[0-9]+$"
+        gas:
+          type: string
+          description: Estimated gas (units) for the transaction.
+          pattern: "^[0-9]+$"
+        ourFeeBps:
+          type: integer
+          example: 10
+        ourFeeRecipient:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        estimatedOurFeeAmount:
+          type: string
+          pattern: "^[0-9]+$"
+        estimatedOurFeeToken:
+          type: string
+          pattern: "^0x[a-fA-F0-9]{40}$"
