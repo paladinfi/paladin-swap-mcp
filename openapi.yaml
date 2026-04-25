@@ -37,13 +37,14 @@ paths:
                 version: "0.1.0"
   /v1/quote:
     post:
-      summary: Best-execution swap quote with calldata
+      summary: Competitive route quote with calldata
       description: |
-        Returns the best-execution route across upstream aggregators (0x today;
-        1inch and Odos coming) for a token pair on Base, including
-        ready-to-execute transaction calldata. The router address and calldata
-        are submitted by the caller's wallet — PaladinFi does not sign or hold
-        funds.
+        Queries integrated upstream aggregators (0x Settler today; 1inch and
+        Odos planned) and returns a competitive route for a token pair on Base,
+        including ready-to-execute transaction calldata. The router address and
+        calldata are submitted by the caller's wallet — PaladinFi does not sign
+        or hold funds. PaladinFi does not represent any returned route as the
+        best available across the broader DeFi market.
       requestBody:
         required: true
         content:
@@ -59,7 +60,7 @@ paths:
               slippageBps: 50
       responses:
         "200":
-          description: Best-execution quote
+          description: Competitive route quote
           content:
             application/json:
               schema:

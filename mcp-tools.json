@@ -9,7 +9,7 @@
   "tools": [
     {
       "name": "swap_quote",
-      "description": "Get a best-execution swap quote on Base (chainId 8453). Returns ready-to-execute calldata with a 10 bps fee already injected. Your wallet signs and submits the transaction; PaladinFi never holds funds.",
+      "description": "Get a competitive multi-aggregator swap quote on Base (chainId 8453). Queries integrated upstream aggregators (0x Settler today; 1inch and Odos planned) and returns ready-to-execute calldata with a 10 bps routing fee already injected. PaladinFi does not represent any returned route as the best available across the broader DeFi market. Your wallet signs and submits the transaction; PaladinFi never holds funds.",
       "inputSchema": {
         "type": "object",
         "required": ["sellToken", "buyToken", "sellAmount", "taker"],

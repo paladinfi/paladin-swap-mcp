@@ -1,6 +1,8 @@
 # paladin-swap-mcp
 
-**Open client and API spec for [PaladinFi Swap](https://paladinfi.com/swap/)** — a multi-aggregator swap router for AI agents on Base. This repository contains the public REST and MCP API specification, working code examples, and thin client wrappers. The hosted backend at `swap.paladinfi.com` is proprietary.
+**Open client and API spec for [PaladinFi Swap](https://paladinfi.com/swap/)** — a competitive multi-aggregator swap router for AI agents on Base. This repository contains the public REST and MCP API specification, working code examples, and thin client wrappers. The hosted backend at `swap.paladinfi.com` is proprietary.
+
+> **Routing scope.** PaladinFi Swap queries a limited set of integrated upstream aggregators (currently 0x Settler; 1inch and Odos planned) and returns a competitive route. We do not represent any returned route as the best available, lowest-cost, or optimal across the broader DeFi market. Phrases like "best execution" are reserved-meaning terms in U.S. securities law and are deliberately not used here.
 
 [![Status](https://img.shields.io/badge/status-live-3fb950)](https://swap.paladinfi.com/health)
 [![Chain](https://img.shields.io/badge/chain-Base%208453-2563eb)](https://basescan.org/)
@@ -62,7 +64,7 @@ Full REST spec in [`openapi.yaml`](openapi.yaml).
 | Method | Path | Purpose |
 |--------|------|---------|
 | `GET` | `/health` | Liveness + fee config |
-| `POST` | `/v1/quote` | Best-execution quote with calldata |
+| `POST` | `/v1/quote` | Competitive route quote with calldata |
 | `POST` | `/mcp` | MCP Streamable-HTTP transport |
 
 ## Response shape (abridged)

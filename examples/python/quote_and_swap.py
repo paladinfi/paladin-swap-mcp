@@ -28,7 +28,7 @@ WETH = "0x4200000000000000000000000000000000000006"
 
 def quote(sell_token: str, buy_token: str, sell_amount: str, taker: str,
           slippage_bps: int = 50) -> dict:
-    """Fetch a best-execution quote with ready-to-execute calldata."""
+    """Fetch a competitive route quote with ready-to-execute calldata."""
     payload = {
         "chainId": CHAIN_ID,
         "sellToken": sell_token,
