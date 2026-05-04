@@ -137,7 +137,7 @@ Production. The endpoint is live, monitored, and verified end-to-end with on-cha
 
 ## Legal
 
-Operated by **Malcontent Games LLC**, doing business as **PaladinFi**, an Ohio limited liability company. The Service routes quotes through third-party aggregators (currently 0x). You retain custody — your agent signs every transaction. PaladinFi never holds user funds.
+Operated by **Malcontent Games LLC**, doing business as **PaladinFi**, a Michigan limited liability company. The Service routes quotes through third-party aggregators (currently 0x). You retain custody — your agent signs every transaction. PaladinFi never holds user funds.
 
 Use of the hosted Service is subject to the [PaladinFi Terms of Service](https://paladinfi.com/terms/) and [Privacy Policy](https://paladinfi.com/privacy/).
 
