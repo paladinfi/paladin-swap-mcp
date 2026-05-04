@@ -2,14 +2,15 @@
 
 **Open client and API spec for [PaladinFi Swap](https://paladinfi.com/swap/)** — a competitive multi-aggregator swap router for AI agents on Base. This repository contains the public REST and MCP API specification, working code examples, and thin client wrappers. The hosted backend at `swap.paladinfi.com` is proprietary.
 
-> **Routing scope.** PaladinFi Swap queries a limited set of integrated upstream aggregators (currently 0x Settler; 1inch and Odos planned) and returns a competitive route. We do not represent any returned route as the best available, lowest-cost, or optimal across the broader DeFi market. Phrases like "best execution" are reserved-meaning terms in U.S. securities law and are deliberately not used here.
+> **Routing scope.** PaladinFi Swap queries a limited set of integrated upstream aggregators (currently 0x and Velora; 1inch and Odos planned) in parallel and returns whichever delivers the higher post-fee buy amount. We do not represent any returned route as the best available, lowest-cost, or optimal across the broader DeFi market. Phrases like "best execution" are reserved-meaning terms in U.S. securities law and are deliberately not used here.
 
 [![Status](https://img.shields.io/badge/status-live-3fb950)](https://swap.paladinfi.com/health)
 [![Chain](https://img.shields.io/badge/chain-Base%208453-2563eb)](https://basescan.org/)
-[![Backend](https://img.shields.io/badge/backend-0x%20Settler-555)](https://0x.org/products/swap)
+[![Backend](https://img.shields.io/badge/backend-0x%20%2B%20Velora%20best--of--N-555)](https://paladinfi.com/swap/)
 [![Fee](https://img.shields.io/badge/fee-10%20bps-b64cef)](#fees)
 [![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP-7c3aed)](https://modelcontextprotocol.io)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![paladinfi/paladin-swap-mcp MCP server](https://glama.ai/mcp/servers/paladinfi/paladin-swap-mcp/badges/score.svg)](https://glama.ai/mcp/servers/paladinfi/paladin-swap-mcp)
 
 ---
 
@@ -34,10 +35,11 @@ For [Claude Code](https://claude.com/claude-code) or any MCP-compatible client s
 claude mcp add --transport http --scope user paladin-swap https://swap.paladinfi.com/mcp
 ```
 
-Restart your client. Two tools become available:
+Restart your client. Three tools become available:
 
-- `swap_quote(sellToken, buyToken, sellAmount, taker, chainId?, slippageBps?)`
-- `swap_health()`
+- `swap_quote(sellToken, buyToken, sellAmount, taker, chainId?, slippageBps?)` — best-of-N quote across 0x + Velora; returns ready-to-execute calldata.
+- `trust_check_preview(address, chainId?)` — sample-fixture preview of token-contract trust evaluation. Free / non-paid; returns `_real: false` to clearly mark as a preview. Real evaluations available via `@paladinfi/eliza-plugin-trust` or `@paladinfi/agentkit-actions` (paid via x402, $0.001/call).
+- `swap_health()` — liveness + per-source counters for the routing service.
 
 See [`mcp-tools.json`](mcp-tools.json) for the full tool schemas.
 
@@ -63,17 +65,18 @@ Full REST spec in [`openapi.yaml`](openapi.yaml).
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `GET` | `/health` | Liveness + fee config |
-| `POST` | `/v1/quote` | Competitive route quote with calldata |
+| `GET` | `/health` | Liveness + fee config + per-source counters |
+| `POST` | `/v1/quote` | Best-of-N route quote with calldata (0x + Velora today) |
+| `POST` | `/v1/trust-check/preview` | Free sample-fixture preview of trust evaluation |
 | `POST` | `/mcp` | MCP Streamable-HTTP transport |
 
 ## Response shape (abridged)
 
 ```json
 {
-  "source": "0x",
+  "source": "velora",
   "chainId": 8453,
-  "router": "0x0000000000001ff3684f28c67538d4d072c22734",
+  "router": "0x6a000f20005980200259b80c5102003040001068",
   "calldata": "0x...",
   "buyAmount": "2160000000000000",
   "minBuyAmount": "2138000000000000",
@@ -86,7 +89,7 @@ Full REST spec in [`openapi.yaml`](openapi.yaml).
 }
 ```
 
-Submit the transaction as `to=router, data=calldata, value=0` (for ERC20→ERC20) from `taker`.
+`source` is the upstream aggregator that won this quote (`"0x"` or `"velora"`). Submit the transaction as `to=router, data=calldata, value=0` (for ERC20→ERC20) from `taker`.
 
 ## Examples
 
@@ -102,19 +105,21 @@ Fees route directly to the PaladinFi treasury — no on-chain receipt step on yo
 ## Supported assets
 
 - **Chain:** Base (8453). Ethereum mainnet, Arbitrum, Optimism, BNB are on the roadmap.
-- **Tokens:** Any ERC20 supported by 0x Settler on Base — USDC, WETH, cbBTC, USDT, DAI, AERO, and a long tail of mid-cap pairs.
+- **Tokens:** Any ERC20 supported by either 0x or Velora on Base. Coverage is the union of both aggregators — canonical pairs (USDC, WETH, cbBTC, USDT, DAI, AERO) are routable on both; long-tail tokens often route on only one of the two.
 
 ## Roadmap
 
 - [x] 0x Settler routing on Base
+- [x] **Best-of-N routing across 0x and Velora on Base** (v0.11.66+, 2026-05-04)
 - [x] MCP Streamable-HTTP transport
-- [ ] 1inch + Odos as parallel routing sources (best-of-N)
-- [ ] Ethereum mainnet, Arbitrum, BNB, Optimism
-- [ ] Permit2-native flow (skip the approve tx)
+- [x] `trust_check_preview` MCP tool (v0.11.65)
+- [ ] 1inch + Odos as additional routing sources — planned
+- [ ] Ethereum mainnet, Arbitrum, BNB, Optimism — planned
+- [ ] Permit2-native flow (skip the approve tx) — planned
 
 ## Status
 
-Production. The endpoint is live, monitored, and verified end-to-end with on-chain test transactions on Base. See [`/health`](https://swap.paladinfi.com/health) for current fee config and version.
+Production. The endpoint is live, monitored, and verified end-to-end with on-chain test transactions on Base. See [`/health`](https://swap.paladinfi.com/health) for current fee config, version, and per-source counters.
 
 ## What's in this repository
 
@@ -137,7 +142,7 @@ Production. The endpoint is live, monitored, and verified end-to-end with on-cha
 
 ## Legal
 
-Operated by **Malcontent Games LLC**, doing business as **PaladinFi**, a Michigan limited liability company. The Service routes quotes through third-party aggregators (currently 0x). You retain custody — your agent signs every transaction. PaladinFi never holds user funds.
+Operated by **Malcontent Games LLC**, doing business as **PaladinFi**, a Michigan limited liability company. The Service routes quotes through third-party aggregators (currently 0x and Velora). You retain custody — your agent signs every transaction. PaladinFi never holds user funds.
 
 Use of the hosted Service is subject to the [PaladinFi Terms of Service](https://paladinfi.com/terms/) and [Privacy Policy](https://paladinfi.com/privacy/).
 
