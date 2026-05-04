@@ -2,11 +2,12 @@ openapi: 3.0.3
 info:
   title: PaladinFi Swap API
   description: |
-    Multi-aggregator swap router for AI agents on Base. Returns ready-to-execute
-    calldata with a deterministic 10 bps fee already injected.
+    Multi-aggregator swap router and pre-trade trust verification for AI agents on
+    Base. Returns ready-to-execute calldata with a deterministic 10 bps fee already
+    injected.
 
     Operated by Malcontent Games LLC, doing business as PaladinFi.
-  version: "0.1.0"
+  version: "0.2.0"
   contact:
     name: PaladinFi
     email: dev@paladinfi.com
@@ -39,12 +40,13 @@ paths:
     post:
       summary: Competitive route quote with calldata
       description: |
-        Queries integrated upstream aggregators (0x Settler today; 1inch and
-        Odos planned) and returns a competitive route for a token pair on Base,
-        including ready-to-execute transaction calldata. The router address and
-        calldata are submitted by the caller's wallet — PaladinFi does not sign
-        or hold funds. PaladinFi does not represent any returned route as the
-        best available across the broader DeFi market.
+        Queries integrated upstream aggregators (currently 0x Settler and Velora
+        AugustusSwapper v6.2; 1inch and Odos planned) and returns the route with
+        the higher post-fee buy amount for a token pair on Base, including
+        ready-to-execute transaction calldata. The router address and calldata
+        are submitted by the caller's wallet — PaladinFi does not sign or hold
+        funds. PaladinFi does not represent any returned route as the best
+        available across the broader DeFi market.
       requestBody:
         required: true
         content:
@@ -71,6 +73,70 @@ paths:
           description: Rate limit exceeded
         "503":
           description: Upstream aggregator unavailable
+  /v1/trust-check:
+    post:
+      summary: Live token-contract trust evaluation (paid)
+      description: |
+        Evaluates a token contract on Base against OFAC SDN screening (refreshed
+        daily from the U.S. Treasury XML feed), GoPlus token security signals,
+        Etherscan source verification, and PaladinFi anomaly heuristics. Returns
+        a `recommendation: "allow" | "warn" | "block"` verdict with a per-source
+        breakdown.
+
+        **Pricing**: $0.001 USDC per call, settled via the x402 protocol on Base.
+        Requests must include a valid x402 payment header; the middleware returns
+        HTTP 402 with payment instructions if the header is missing or invalid.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrustCheckRequest"
+            example:
+              chainId: 8453
+              address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+      responses:
+        "200":
+          description: Trust evaluation completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrustCheckResponse"
+        "400":
+          description: Invalid request (malformed address, unsupported chain, etc.)
+        "402":
+          description: Payment required (x402 settlement missing or invalid)
+        "429":
+          description: Rate limit exceeded
+  /v1/trust-check/preview:
+    post:
+      summary: Sample-fixture preview of the trust check (free)
+      description: |
+        Returns a static fixture mimicking the trust-check response shape — useful
+        for validating client request payloads and inspecting the response schema
+        without paying. NO live data sources are queried. Every factor in the
+        response is marked `real: false`, the `recommendation` is prefixed
+        `sample-` (e.g., `sample-allow`), and the top-level response includes
+        `_real: false`. **Do not use the preview verdict to gate real swaps,
+        signing, or any production agent decision.**
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TrustCheckRequest"
+            example:
+              chainId: 8453
+              address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+      responses:
+        "200":
+          description: Sample-fixture trust response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrustCheckPreviewResponse"
+        "400":
+          description: Invalid request (malformed address, unsupported chain)
 components:
   schemas:
     Health:
@@ -183,3 +249,94 @@ components:
         estimatedOurFeeToken:
           type: string
           pattern: "^0x[a-fA-F0-9]{40}$"
+    TrustCheckRequest:
+      type: object
+      required: [address]
+      properties:
+        chainId:
+          type: integer
+          description: EVM chain ID. Defaults to 8453 (Base — currently the only supported chain).
+          default: 8453
+        address:
+          type: string
+          description: 0x-prefixed ERC-20 contract address to evaluate.
+          pattern: "^0x[a-fA-F0-9]{40}$"
+        taker:
+          type: string
+          description: Optional 0x-prefixed Ethereum address of the agent wallet considering the swap (echoed in response, not consulted).
+          pattern: "^0x[a-fA-F0-9]{40}$"
+    TrustCheckResponse:
+      type: object
+      description: Live trust evaluation. `_real` is `true`; the `trust` block reflects real source signals.
+      required: [address, chainId, request_id, trust]
+      properties:
+        address:
+          type: string
+        chainId:
+          type: integer
+        taker:
+          type: string
+          nullable: true
+        request_id:
+          type: string
+          description: Server-issued UUID for this request.
+        _real:
+          type: boolean
+          enum: [true]
+          description: Always `true` on the paid endpoint. Agents should test this before consuming the verdict.
+        trust:
+          type: object
+          properties:
+            risk_score:
+              type: integer
+              description: 0-100 (lower = safer).
+            recommendation:
+              type: string
+              enum: [allow, warn, block]
+            factors:
+              type: array
+              items:
+                type: object
+            version:
+              type: string
+    TrustCheckPreviewResponse:
+      type: object
+      description: |
+        Sample fixture. `_real` is always `false`. The `trust` block is illustrative
+        only — every factor includes `real: false` and `recommendation` is prefixed
+        `sample-`.
+      required: [address, chainId, request_id, trust]
+      properties:
+        address:
+          type: string
+        chainId:
+          type: integer
+        taker:
+          type: string
+          nullable: true
+        request_id:
+          type: string
+        _real:
+          type: boolean
+          enum: [false]
+        _HUMAN_DO_NOT_USE_AS_REAL_VERDICT:
+          type: string
+          description: Misuse-prevention banner (always present on preview responses).
+        trust:
+          type: object
+          properties:
+            recommendation:
+              type: string
+              description: Always prefixed `sample-` on preview responses.
+              example: "sample-allow"
+            _preview:
+              type: boolean
+              enum: [true]
+            factors:
+              type: array
+              items:
+                type: object
+                properties:
+                  real:
+                    type: boolean
+                    enum: [false]
