@@ -2,7 +2,7 @@
 
 **Open client and API spec for [PaladinFi Swap](https://paladinfi.com/swap/)** — a competitive multi-aggregator swap router for AI agents on Base. This repository contains the public REST and MCP API specification, working code examples, and thin client wrappers. The hosted backend at `swap.paladinfi.com` is proprietary.
 
-> **Routing scope.** PaladinFi Swap queries a limited set of integrated upstream aggregators (currently 0x and Velora; 1inch and Odos planned) in parallel and returns whichever delivers the higher post-fee buy amount. We do not represent any returned route as the best available, lowest-cost, or optimal across the broader DeFi market. Phrases like "best execution" are reserved-meaning terms in U.S. securities law and are deliberately not used here.
+> **Routing scope.** PaladinFi Swap queries integrated upstream aggregators (currently 0x and Velora) in parallel and returns whichever delivers the higher post-fee buy amount. We do not represent any returned route as the best available, lowest-cost, or optimal across the broader DeFi market. Phrases like "best execution" are reserved-meaning terms in U.S. securities law and are deliberately not used here.
 
 [![Status](https://img.shields.io/badge/status-live-3fb950)](https://swap.paladinfi.com/health)
 [![Chain](https://img.shields.io/badge/chain-Base%208453-2563eb)](https://basescan.org/)
@@ -43,6 +43,85 @@ Restart your client. Three tools become available:
 - `swap_health()` — liveness, fee config, per-source counters, decimals-cache state, last Velora startup-canary verdict, selector-enforcement state.
 
 See [`mcp-tools.json`](mcp-tools.json) for the full tool schemas.
+
+## Agent usage walkthrough
+
+A representative call chain when an MCP-aware agent (e.g., Claude Code) handles a swap intent. Specific tool-call formatting varies by client; the key point is that the swap router returns ready-to-execute calldata so the agent never composes routing logic itself.
+
+**User:** *"Swap 100 USDC for WETH on Base."*
+
+**1. Optional pre-trade trust check** (free, sample-fixture only). Before composing the swap, the agent may call `trust_check_preview` to inspect the buy-token contract's risk shape.
+
+```json
+// Tool call
+{
+  "tool": "trust_check_preview",
+  "arguments": {
+    "address": "0x4200000000000000000000000000000000000006",
+    "chainId": 8453
+  }
+}
+```
+
+```json
+// Response (truncated)
+{
+  "_real": false,
+  "_HUMAN_DO_NOT_USE_AS_REAL_VERDICT": "Preview-only fixture. See README.",
+  "trust": {
+    "recommendation": "sample-allow",
+    "_preview": true,
+    "factors": [
+      { "real": false, "source": "ofac",      "signal": "clear" },
+      { "real": false, "source": "goplus",    "signal": "clear" },
+      { "real": false, "source": "etherscan", "signal": "verified-contract" }
+    ]
+  }
+}
+```
+
+The preview is **sample-fixture only** — agents must check `_real === true` before consuming a verdict. For production gating, call `/v1/trust-check` (paid, $0.001 USDC/call via x402) or use the npm plugins [`@paladinfi/eliza-plugin-trust`](https://www.npmjs.com/package/@paladinfi/eliza-plugin-trust) / [`@paladinfi/agentkit-actions`](https://www.npmjs.com/package/@paladinfi/agentkit-actions).
+
+**2. Competitive quote with calldata.** The agent calls `swap_quote` to get the route + ready-to-execute transaction.
+
+```json
+// Tool call
+{
+  "tool": "swap_quote",
+  "arguments": {
+    "sellToken": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+    "buyToken":  "0x4200000000000000000000000000000000000006",
+    "sellAmount": "100000000",
+    "taker":      "0xUserAgentWallet",
+    "chainId":    8453,
+    "slippageBps": 50
+  }
+}
+```
+
+```json
+// Response (illustrative; values depend on live pool state)
+{
+  "source":           "velora",
+  "chainId":          8453,
+  "router":           "0x6a000f20005980200259b80c5102003040001068",
+  "calldata":         "0xe3ead59e000000000000000000000000...",
+  "buyAmount":        "43200000000000000",
+  "minBuyAmount":     "42984000000000000",
+  "sellAmount":       "100000000",
+  "gas":              "318707",
+  "ourFeeBps":        10,
+  "ourFeeRecipient":  "0xeA8C33d018760D034384e92D1B2a7cf0338834b4"
+}
+```
+
+`source` indicates whichever upstream aggregator (0x or Velora) delivered the higher post-fee buy amount for this pair. The 10 bps fee is already injected into the calldata; the `buyAmount` you see is the user's net (post-fee, pre-slippage). `minBuyAmount` reflects the requested 50 bps slippage tolerance.
+
+**3. Sign + submit.** The agent surfaces the transaction shape to the user's wallet for signing — `to=router, data=calldata, value=0` (for ERC20 → ERC20). PaladinFi never sees the signature; the wallet broadcasts the transaction directly to Base.
+
+**4. Confirm.** Slippage is enforced on-chain: the swap reverts if the actual fill would deliver less than `minBuyAmount`. The agent reports the transaction hash; the user's wallet shows the settled buy amount on Base. The 10 bps fee transfers to the published treasury address (`/health`) atomically as part of the same transaction — no second on-chain step.
+
+**Non-custodial end-to-end.** At no point does PaladinFi hold, sign, or move funds. The MCP server returns metadata; the wallet executes. A compromised swap router could only return calldata; even malicious calldata is bounded by the v0.11.71 outer-router + selector + 0x Settler-target allowlist (see Roadmap below) and the user's own wallet-side approval limits.
 
 ## Install (REST)
 
@@ -128,11 +207,9 @@ The paid `/v1/trust-check` endpoint evaluates a token contract against a defined
 
 - [x] 0x Settler routing on Base
 - [x] **Highest-of-two routing across 0x and Velora on Base** (v0.11.66+, 2026-05-04)
-- [x] MCP Streamable-HTTP transport
-- [x] `trust_check_preview` MCP tool (v0.11.65)
+- [x] MCP Streamable-HTTP transport with `swap_quote`, `swap_health`, and `trust_check_preview` tools
 - [x] `/v1/trust-check` paid endpoint via x402 ($0.001 USDC/call)
 - [x] Per-source 4-byte calldata selector + Settler-target allowlist (v0.11.71 — defense in depth against router-substitution / dispatcher-hijack attacks)
-- [ ] 1inch + Odos as additional routing sources — planned
 - [ ] Ethereum mainnet, Arbitrum, BNB, Optimism — planned
 - [ ] Permit2-native flow (skip the approve tx) — planned
 
