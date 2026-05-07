@@ -18,9 +18,11 @@ info:
 servers:
   - url: https://swap.paladinfi.com
     description: Production
+security: []
 paths:
   /health:
     get:
+      operationId: getHealth
       summary: Liveness and fee config
       description: Returns service status, fee configuration, and supported chains.
       responses:
@@ -38,6 +40,7 @@ paths:
                 version: "0.1.0"
   /v1/quote:
     post:
+      operationId: postQuote
       summary: Competitive route quote with calldata
       description: |
         Queries integrated upstream aggregators (currently 0x Settler and Velora
@@ -58,7 +61,7 @@ paths:
               sellToken: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
               buyToken: "0x4200000000000000000000000000000000000006"
               sellAmount: "5000000"
-              taker: "0xYOUR_AGENT_WALLET"
+              taker: "0x000000000000000000000000000000000000dEaD"
               slippageBps: 50
       responses:
         "200":
@@ -75,6 +78,9 @@ paths:
           description: Upstream aggregator unavailable
   /v1/trust-check:
     post:
+      operationId: postTrustCheck
+      security:
+        - x402: []
       summary: Live token-contract trust evaluation (paid)
       description: |
         Evaluates a token contract on Base against OFAC SDN screening (refreshed
@@ -110,6 +116,7 @@ paths:
           description: Rate limit exceeded
   /v1/trust-check/preview:
     post:
+      operationId: postTrustCheckPreview
       summary: Sample-fixture preview of the trust check (free)
       description: |
         Returns a static fixture mimicking the trust-check response shape — useful
@@ -138,6 +145,18 @@ paths:
         "400":
           description: Invalid request (malformed address, unsupported chain)
 components:
+  securitySchemes:
+    x402:
+      type: apiKey
+      in: header
+      name: X-PAYMENT
+      description: |
+        x402 payment protocol (https://x402.org). Clients send the
+        `X-PAYMENT` header with a base64-encoded payment payload signing
+        a USDC transfer on Base. The server's facilitator verifies the
+        signature, settles the payment on-chain, and forwards the request.
+        On missing/invalid payment, the server responds with HTTP 402 and
+        a `paymentRequirements` body describing accepted amounts/networks.
   schemas:
     Health:
       type: object
