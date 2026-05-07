@@ -1,0 +1,49 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: schema + syntax lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate YAML files parse
+        run: |
+          set -e
+          status=0
+          while IFS= read -r f; do
+            if python3 -c "import yaml; yaml.safe_load(open('$f'))" 2>/dev/null; then
+              echo "✓ $f"
+            else
+              echo "✗ $f — YAML parse failure"
+              status=1
+            fi
+          done < <(find . -type f \( -name '*.yaml' -o -name '*.yml' \) -not -path './.git/*' -not -path './node_modules/*')
+          exit $status
+
+      - name: Validate JSON files parse
+        run: |
+          set -e
+          status=0
+          while IFS= read -r f; do
+            if python3 -m json.tool "$f" > /dev/null 2>&1; then
+              echo "✓ $f"
+            else
+              echo "✗ $f — JSON parse failure"
+              status=1
+            fi
+          done < <(find . -type f -name '*.json' -not -path './.git/*' -not -path './node_modules/*')
+          exit $status
+
+      - name: Validate OpenAPI 3.0 schema
+        run: npx --yes @redocly/cli@1 lint openapi.yaml
