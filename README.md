@@ -9,6 +9,7 @@
 [![Backend](https://img.shields.io/badge/backend-0x%20%2B%20Velora-555)](https://paladinfi.com/swap/)
 [![Fee](https://img.shields.io/badge/fee-10%20bps-b64cef)](#fees)
 [![MCP](https://img.shields.io/badge/MCP-Streamable%20HTTP-7c3aed)](https://modelcontextprotocol.io)
+[![CI](https://github.com/paladinfi/paladin-swap-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/paladinfi/paladin-swap-mcp/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![paladinfi/paladin-swap-mcp MCP server](https://glama.ai/mcp/servers/paladinfi/paladin-swap-mcp/badges/score.svg)](https://glama.ai/mcp/servers/paladinfi/paladin-swap-mcp)
 
@@ -145,9 +146,11 @@ Production. The endpoint is live, monitored, and verified end-to-end with on-cha
 |---------------|---------|
 | [`README.md`](README.md) | This file |
 | [`LICENSE`](LICENSE) | MIT — covers everything in this repo |
+| [`SECURITY.md`](SECURITY.md) | Vulnerability disclosure path + scope |
 | [`openapi.yaml`](openapi.yaml) | OpenAPI 3.0 spec for the public REST API |
 | [`mcp-tools.json`](mcp-tools.json) | MCP tool schemas |
 | [`examples/`](examples) | Working code examples (Python, TypeScript) |
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | CI: YAML/JSON syntax + OpenAPI 3.0 schema validation on push/PR |
 
 **Not in this repository:** the hosted backend (proprietary). This repo is the public client surface — install instructions, schemas, and integration code samples.
 
