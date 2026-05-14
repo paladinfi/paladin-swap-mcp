@@ -43,6 +43,24 @@ Restart your client. Three tools become available:
 - `swap_health()` — liveness, fee config, per-source counters, decimals-cache state, last Velora startup-canary verdict, selector-enforcement state.
 
 See [`mcp-tools.json`](mcp-tools.json) for the full tool schemas.
+## MCP standards compliance
+
+| Requirement | Status |
+|---|---|
+| Tool `title` + `annotations` (readOnlyHint, openWorldHint, idempotentHint, destructiveHint) | ✓ since v0.11.74; verify via the MCP `tools/list` method |
+| Tool name ≤64 chars | ✓ longest is `trust_check_preview` (19 chars) |
+| Streamable HTTP transport | ✓ at `https://swap.paladinfi.com/mcp` |
+| Public OpenAPI 3.0 schema | ✓ at [`/openapi.yaml`](https://swap.paladinfi.com/openapi.yaml) |
+| Documented rate limits | ✓ at [paladinfi.com/swap](https://paladinfi.com/swap) (5 r/s + burst 30 on `/v1/quote`; 10 r/s + burst 30 on `/mcp`; 5 concurrent connections per IP) |
+| x402 paid-tool challenge | ✓ on the `/v1/trust-check` paid endpoint. The MCP `trust_check_preview` tool is gated to sample-fixture output with explicit misuse banners (`_real: false`, `_HUMAN_DO_NOT_USE_AS_REAL_VERDICT`, `sample-` recommendation prefix) — preview by design, never a real verdict |
+| Tool descriptions narrow + accurate | ✓ see [`mcp-tools.json`](mcp-tools.json) for exact schemas |
+
+Per [MCP `ToolAnnotations`](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#tool-annotations):
+
+- **`swap_quote`** — title `"Get Swap Quote"`; `readOnlyHint: true` (returns calldata, never mutates server state), `openWorldHint: true` (calls upstream aggregators 0x AllowanceHolder + Velora Augustus v6.2 on Base)
+- **`trust_check_preview`** — title `"Token Trust Check (Preview)"`; `readOnlyHint: true`, `idempotentHint: true` (deterministic sample fixture per address), `openWorldHint: true` (paid-mode upstream factor sources cross the process boundary; defensive contract-violation handlers exist for shape drift)
+- **`swap_health`** — title `"Swap Service Health"`; `readOnlyHint: true`, `openWorldHint: false` (introspection of our own service state only)
+
 
 ## Agent usage walkthrough
 
