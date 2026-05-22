@@ -6,6 +6,25 @@ Versions are the unified server cohort; the same number is reported by `swap.pal
 
 ---
 
+## v0.11.76 — 2026-05-22
+
+### Changed
+
+- **`/v1/trust-check` response shape — `scam_intel` sub-sources now emit explicit `unreachable` factors** when they can't run, closing a silent-`[]` gap one layer below the v0.11.73 fail-closed contract. Previously a missing `ETHERSCAN_API_KEY` or an upstream API failure on either `goplus` or `etherscan_source` caused the affected sub-source to be omitted from the `factors[]` array entirely. Customers couldn't distinguish "sub-source ran and returned no signal" from "sub-source didn't run". Now both modes emit a flagged factor with `signal: "unreachable"`, `real: false`, `weight: 0`, `details: "source unreachable"` — identical shape to the v0.11.73 source-level unreachable factor. Three paths affected:
+  - `_check_goplus` upstream API failed (non-success code or network error) → unreachable.
+  - `_check_etherscan_source` `ETHERSCAN_API_KEY` not configured → unreachable.
+  - `_check_etherscan_source` upstream API failed (network error, non-success status, or missing result) → unreachable.
+
+### Notes
+
+- **Additive change for downstream consumers.** Code already filtering `real: false` factors out of risk computation per the v0.11.73 contract handles this transparently — new unreachable factors are ignored. Code counting `factors[]` length sees more items when sub-sources are unreachable; that's the intended honest signal.
+- **`TRUST_BLOCK_VERSION` stays at `1.1`.** The structural contract — per-source unreachable factor emission — is unchanged from v0.11.73; v0.11.76 extends the contract's coverage to sub-source paths in the `scam_intel` group without changing the wire shape.
+- **Sec HIGH-V2 invariant preserved.** The `details` field is the static phrase `"source unreachable"`, never a stringified exception. No API-key, hostname, or URL leak vectors through the new unreachable factors.
+- **Still silent-`[]` by design (out of scope):** GoPlus chain-unsupported (out-of-coverage is semantically distinct from unreachable; deserves its own taxonomy in a future scope discussion); GoPlus "no data on this address" (honest "ran fine, no signal" answer — not a failure).
+- 10 unit tests at `tests/v0.11.76/test_scam_intel_unreachable.py`; 24/24 pass alongside the existing 13 v0.11.73 fail-closed tests (no regression).
+
+---
+
 ## v0.11.75 — 2026-05-22
 
 ### Added
