@@ -6,6 +6,30 @@ Versions are the unified server cohort; the same number is reported by `swap.pal
 
 ---
 
+## v0.11.75 — 2026-05-22
+
+### Added
+
+- **`CORSMiddleware` on `swap.paladinfi.com`** enabling in-browser cross-origin calls to `/v1/quote` from `paladinfi.com` and `www.paladinfi.com`. The new interactive widget on the `/swap/` apex page calls `/v1/quote` live from the browser; this middleware unblocks the preflight that would otherwise prevent the widget from working.
+  - `allow_origins`: `["https://paladinfi.com", "https://www.paladinfi.com"]` — narrow allowlist. Both surfaces serve via LiteSpeed (no `www → apex` redirect), so both must be present.
+  - `allow_methods`: `["GET", "POST", "OPTIONS"]`.
+  - `allow_headers`: `["content-type"]` — narrow.
+  - `allow_credentials`: `false`.
+  - `max_age`: `600` (10-minute preflight cache).
+- Middleware is registered **first** (outermost in Starlette's LIFO stack) so `OPTIONS` preflight short-circuits inside CORS before reaching `EEAGeofenceMiddleware` / `PaymentMiddleware`. EEA-blocked 451 responses still receive the CORS `Access-Control-Allow-Origin` header on the response path, so the browser sees a clean 451 with allow-origin set rather than an opaque network error.
+
+### Changed
+
+- `/health` version bumped `0.11.74 → 0.11.75`.
+
+### Notes
+
+- **No public-API behavioral change for non-browser callers.** `curl`, MCP clients, and server-to-server callers see identical behavior to v0.11.74. Only cross-origin browser callers from `paladinfi.com` / `www.paladinfi.com` see new behavior (CORS preflight succeeds).
+- Deploy procedure gained a pre-flight nginx CORS-header scan to prevent future double-CORS-header bugs from misconfigured nginx zones. Scan returned clean for v0.11.75.
+- Paid-mode (`/v1/quote-paid`) is unaffected — x402 settlement headers (`X-PAYMENT`, etc.) are intentionally not in `allow_headers` because the in-browser widget calls only the free `/v1/quote` path. A future paid-mode browser surface would require widening the allowlist.
+
+---
+
 ## v0.11.74 — 2026-05-12
 
 ### Added
