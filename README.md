@@ -54,6 +54,7 @@ See [`mcp-tools.json`](mcp-tools.json) for the full tool schemas.
 | Documented rate limits | ✓ at [paladinfi.com/swap](https://paladinfi.com/swap) (5 r/s + burst 30 on `/v1/quote`; 10 r/s + burst 30 on `/mcp`; 5 concurrent connections per IP) |
 | x402 paid-tool challenge | ✓ on the `/v1/trust-check` paid endpoint. The MCP `trust_check_preview` tool is gated to sample-fixture output with explicit misuse banners (`_real: false`, `_HUMAN_DO_NOT_USE_AS_REAL_VERDICT`, `sample-` recommendation prefix) — preview by design, never a real verdict |
 | Tool descriptions narrow + accurate | ✓ see [`mcp-tools.json`](mcp-tools.json) for exact schemas |
+| Browser-origin clients (CORS) | ✓ since v0.11.75 on `/v1/quote`; allowlist is `paladinfi.com` + `www.paladinfi.com` only — other origins blocked at preflight |
 
 Per [MCP `ToolAnnotations`](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#tool-annotations):
 
