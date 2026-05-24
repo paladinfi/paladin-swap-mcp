@@ -6,6 +6,51 @@ Versions are the unified server cohort; the same number is reported by `swap.pal
 
 ---
 
+## v0.11.77 — 2026-05-23
+
+### Added
+
+- **`POST /v1/trust-check/ofac` — free wallet-OFAC tier.** Anonymous (no API key), real-data (`_real: true`), rate-limited (1 r/s + burst 3 + `limit_conn perip 3` via dedicated nginx zone). Runs only the OFAC SDN screen (in-memory frozenset lookup of ~93 Treasury SDN wallet addresses refreshed daily). Designed as the on-ramp for callers who want to validate request shape against the trust-check API without bridging to x402 micropayment first. Response includes `_paid_endpoint_info` upgrade hint to the full composition endpoint.
+
+  **Scope note**: this is a wallet-address screen, not a token-contract screen. The Treasury SDN list at FeatureTypeID=345/DetailTypeID=1432 carries individual + entity wallet addresses; token-contract OFAC hits (e.g., Tornado Cash routers) require an extended sanctioned-contract list not in this release. Every response includes a `_scope` field disclosing this explicitly: `"ofac-only (wallet-address screen; use /v1/trust-check for full composition: GoPlus + Etherscan + anomaly heuristics)"`.
+
+  **Response shape** (matches `/v1/trust-check` paid format for consistency):
+
+  ```json
+  {
+    "address": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913",
+    "chainId": 8453,
+    "trust": {
+      "recommendation": "allow",
+      "factors": [
+        { "source": "ofac", "signal": "not_listed", "weight": 0, "details": "", "real": true }
+      ],
+      "version": "1.1",
+      "_real": true,
+      "_scope": "ofac-only (wallet-address screen; use /v1/trust-check for full composition: GoPlus + Etherscan + anomaly heuristics)",
+      "_ofac_list_updated_at": "2026-05-23T04:06:35Z",
+      "_ofac_sdn_count": 93
+    },
+    "_paid_endpoint_info": { "url": "https://swap.paladinfi.com/v1/trust-check", "method": "POST", "auth": "x402 (USDC EIP-3009 transferWithAuthorization on Base)", "price_usdc": "0.001", "...": "..." }
+  }
+  ```
+
+- **`/health` block `ofac_free_endpoint`** with `enabled`, `calls_total`, `last_hit_ts`, `last_result`, `error_count`, and `ofac_list { last_refresh_iso, count, date_of_issue }`. Surfaces both endpoint usage telemetry and the OFAC SDN list's staleness so ops can detect "list went stale" without SSH+grep.
+
+### Notes
+
+- **No upstream API calls in this handler by design.** The OFAC screen is an in-memory frozenset lookup; adding any upstream HTTP call from this endpoint would turn the free tier into a free DDoS vector against PaladinFi's upstream API budgets. Comment-banner in `swap_router_service.py` documents this constraint for future maintainers.
+- **Sec HIGH-V2 invariant**: defensive try/except on `is_sanctioned()` returns a warn shape with the static phrase `"source unreachable"` — never `str(err)`, which would leak API keys or hostnames via embedded URLs. Same invariant as the v0.11.73 trust_block fail-closed contract.
+- **Feature flag**: `OFAC_FREE_ENDPOINT_ENABLED=true` default; operators can flip to `false` + restart `trading-swap-router.service` to disable the endpoint in <30s without redeploy.
+- **EEAGeofence applies identically**: EU users see HTTP 451 on this endpoint as on all others.
+- `TRUST_BLOCK_VERSION` stays at `1.1` — no contract change; the new endpoint uses the same factor shape as the v0.11.73 contract, just emitting only the single OFAC factor.
+
+### Changed
+
+- `/health` version bumped `0.11.76 → 0.11.77`.
+
+---
+
 ## v0.11.76 — 2026-05-22
 
 ### Changed
