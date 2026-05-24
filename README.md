@@ -55,6 +55,7 @@ See [`mcp-tools.json`](mcp-tools.json) for the full tool schemas.
 | x402 paid-tool challenge | ✓ on the `/v1/trust-check` paid endpoint. The MCP `trust_check_preview` tool is gated to sample-fixture output with explicit misuse banners (`_real: false`, `_HUMAN_DO_NOT_USE_AS_REAL_VERDICT`, `sample-` recommendation prefix) — preview by design, never a real verdict |
 | Tool descriptions narrow + accurate | ✓ see [`mcp-tools.json`](mcp-tools.json) for exact schemas |
 | Browser-origin clients (CORS) | ✓ since v0.11.75 on `/v1/quote`; allowlist is `paladinfi.com` + `www.paladinfi.com` only — other origins blocked at preflight |
+| Free real-data on-ramp endpoint | ✓ since v0.11.77 — `POST /v1/trust-check/ofac` runs the OFAC SDN wallet-screen leg only (anonymous, 1 r/s rate-limit + burst 3, daily Treasury XML refresh). Response includes `_paid_endpoint_info` upgrade hint to the full multi-source composition at `/v1/trust-check`. Wallet-OFAC scope (token-contract sanctions list planned for future versions). |
 
 Per [MCP `ToolAnnotations`](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#tool-annotations):
 
