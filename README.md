@@ -56,6 +56,7 @@ See [`mcp-tools.json`](mcp-tools.json) for the full tool schemas.
 | Tool descriptions narrow + accurate | ✓ see [`mcp-tools.json`](mcp-tools.json) for exact schemas |
 | Browser-origin clients (CORS) | ✓ since v0.11.75 on `/v1/quote`; allowlist is `paladinfi.com` + `www.paladinfi.com` only — other origins blocked at preflight |
 | Free real-data on-ramp endpoint | ✓ since v0.11.77 — `POST /v1/trust-check/ofac` runs the OFAC SDN wallet-screen leg only (anonymous, 1 r/s rate-limit + burst 3, daily Treasury XML refresh). Response includes `_paid_endpoint_info` upgrade hint to the full multi-source composition at `/v1/trust-check`. Wallet-OFAC scope (token-contract sanctions list planned for future versions). |
+| MCP Registry listing | ✓ this package is listed as [`io.github.paladinfi/paladin-swap`](https://registry.modelcontextprotocol.io/v0/servers?search=paladinfi). The §4.A-clean trust-check-only variant (no payment surface, no calldata, no transaction execution) ships separately as [`com.paladinfi/trust-check-mcp`](https://registry.modelcontextprotocol.io/v0/servers?search=paladinfi) — Streamable HTTP at [`trust.paladinfi.com/mcp`](https://trust.paladinfi.com/mcp). Use the trust-check variant when payment-surface adjacency would be a deployment blocker. |
 
 Per [MCP `ToolAnnotations`](https://modelcontextprotocol.io/specification/2025-06-18/server/tools#tool-annotations):
 
