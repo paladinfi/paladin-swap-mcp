@@ -162,6 +162,8 @@ curl -sS https://swap.paladinfi.com/v1/quote \
 
 Full REST spec in [`openapi.yaml`](openapi.yaml).
 
+For free OFAC SDN wallet screening (no MCP, no key, no signup), see the drop-in cURL + React hook walkthrough at [paladinfi.com/docs/screen-wallets/](https://paladinfi.com/docs/screen-wallets/) — `POST /v1/trust-check/ofac` returns an `allow` or `block` verdict, anonymous, rate-limited at 1 r/s + burst 3.
+
 ## Endpoints
 
 | Method | Path | Purpose | Pricing |

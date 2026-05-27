@@ -6,6 +6,12 @@ Versions are the unified server cohort; the same number is reported by `swap.pal
 
 ---
 
+## README — 2026-05-27 (doc-only, no version bump)
+
+- Added cross-link in "Install (REST)" section to the new dev tutorial at [paladinfi.com/docs/screen-wallets/](https://paladinfi.com/docs/screen-wallets/) — drop-in cURL + ~3-minute React hook for the free `/v1/trust-check/ofac` endpoint. No code or wire-format change; this repo is the OpenAPI catalog spec only (no npm publish). Backend server version remains v0.11.77.
+
+---
+
 ## v0.11.77 — 2026-05-23
 
 ### Added
